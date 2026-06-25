@@ -1,0 +1,1 @@
+g++ -std=c++17 -I./include -o rula_elavuation src/*

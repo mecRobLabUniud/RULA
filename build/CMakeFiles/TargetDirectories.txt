@@ -1,0 +1,3 @@
+/home/lab/Desktop/RULA/build/CMakeFiles/rebuild_cache.dir
+/home/lab/Desktop/RULA/build/CMakeFiles/edit_cache.dir
+/home/lab/Desktop/RULA/build/CMakeFiles/rula_evaluation.dir
