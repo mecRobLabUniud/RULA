@@ -34,46 +34,40 @@ class SkeletonZmqSubscriber {
       if (worker_.joinable()) worker_.join();
     }
 
+    std::string get_skeleton_data() {
+      return skeleton_data_;
+    }
+
 
   private:
     // Loop principale del thread worker
     void loop() {
 
 
-      socket_.set(zmq::sockopt::conflate, 1);
-
-      // If you want a receive timeout, uncomment:
+      // socket_.set(zmq::sockopt::conflate, 1);
       // socket_.set(zmq::sockopt::rcvtimeo, 1000);
 
       std::string sub_topic = topic_ + "_" + std::to_string(device_id_);
-      // socket_.set(zmq::sockopt::subscribe, sub_topic);
-      socket_.set(zmq::sockopt::subscribe, "");
-      // socket_.connect("tcp://localhost:" + std::to_string(port_));
-      socket_.connect("ipc:///tmp/skeleton.ipc");
+      socket_.set(zmq::sockopt::subscribe, sub_topic);
+      socket_.connect("tcp://localhost:" + std::to_string(port_ + device_id_));
       
-      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      // std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 
-      std::cout << sub_topic << std::endl;
-      std::cout << "tcp://localhost:" + std::to_string(port_) << std::endl;
-
-
-      const auto t0 = std::chrono::steady_clock::now();
 
       while (running_.load(std::memory_order_relaxed)) {
         zmq::message_t msg;
         auto result = socket_.recv(msg, zmq::recv_flags::none);
-
-        std::cout << "msg: " << msg << "\n";
 
         if (!result) {
             std::cout << "Timeout / no message\n";
             continue;
         }
 
-        std::cout << "Bytes: " << msg.size() << "\n";
+        // std::cout << "Bytes: " << msg.size() << "\n";
         std::string text(static_cast<char*>(msg.data()), msg.size());
-        std::cout << "Text: " << text << "\n";
+        skeleton_data_ = text;
+        // std::cout << "Text: " << skeleton_data_ << "\n";
       }
     }
 
@@ -84,6 +78,7 @@ class SkeletonZmqSubscriber {
     int device_id_;
     int port_;
 
+    std::string skeleton_data_;
     zmq::context_t context_;
     zmq::socket_t socket_;
     zmq::socket_t* self_socket_;
