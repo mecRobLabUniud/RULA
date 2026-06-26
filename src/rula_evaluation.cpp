@@ -90,15 +90,19 @@ std::vector<std::array<double, 3>> parseMergedString(const std::string& input, s
 
 
 
-int main() {
-    // Example: segment A from A1 to A2, segment B from B1 to B2
-    std::array<double,3> A1 = {0.0, 0.0, 0.0};
-    std::array<double,3> A2 = {1.0, 1.0, 0.0};
-    std::array<double,3> B1 = {0.0, 0.0, 0.0};
-    std::array<double,3> B2 = {1.0, 0.0, 1.0};
 
-    auto u = vec_from_points(A1, A2);
-    auto v = vec_from_points(B1, B2);
+
+
+
+
+
+
+int rula_evaluation(std::vector<std::array<double, 3>> skeleton) {
+
+    std::array<std::array<int, 4>, 5> indexes = {{}}
+    
+    auto v = vec_from_points(skeleton[2], skeleton[4]);
+    auto u = vec_from_points(skeleton[4], skeleton[6]);
 
     auto angle_opt = angle_between_vectors_rad(u, v);
     if (!angle_opt) {
@@ -110,11 +114,14 @@ int main() {
     double angle_deg = angle_rad * 180.0 / PI;
 
     std::cout << "Angle = " << angle_rad << " radians (" << angle_deg << " degrees)\n";
-    
+}
 
 
 
-    // SkeletonZmqSubscriber skelSub("ipc:///tmp/skeleton.ipc");
+
+
+
+int main() {
     SkeletonZmqSubscriber skelSub(10, "MERGED", 7000);
     
     skelSub.start();
@@ -122,10 +129,10 @@ int main() {
         std::string msg = skelSub.get_skeleton_data();
         std::string label;
         if (msg != "") {
-            auto keypoints = parseMergedString(msg, label);
+            auto skeleton = parseMergedString(msg, label);
+
+            int result = rula_evaluation(skeleton);
         }
-        
-        // std::cout << keypoints[0][0] << std::endl;
     }
     skelSub.stop();
 
