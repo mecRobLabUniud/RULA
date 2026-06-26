@@ -4,8 +4,9 @@
 #include <array>
 #include <optional>
 
-#include "angle_calculation.h"
+// #include "angle_calculation.h"
 #include "skeleton_receiver.h"
+#include "rula_score_computation.h"
 
 constexpr double PI = 3.14159265358979323846;
 
@@ -97,23 +98,29 @@ std::vector<std::array<double, 3>> parseMergedString(const std::string& input, s
 
 
 
-int rula_evaluation(std::vector<std::array<double, 3>> skeleton) {
+int rula_evaluation(Skeleton skeleton) {
 
-    std::array<std::array<int, 4>, 5> indexes = {{}}
+    AdjustmentFlags flags;
+    flags.isRepeated    = true;   // task is repetitive
+    flags.forceScoreA   = 1;      // 2-10 kg load, intermittent
+    flags.forceScoreB   = 1;
+
     
-    auto v = vec_from_points(skeleton[2], skeleton[4]);
-    auto u = vec_from_points(skeleton[4], skeleton[6]);
 
-    auto angle_opt = angle_between_vectors_rad(u, v);
-    if (!angle_opt) {
-        std::cerr << "One of the segments has near-zero length; angle undefined.\n";
-        return 1;
-    }
+    auto start = std::chrono::steady_clock::now();
 
-    double angle_rad = *angle_opt;
-    double angle_deg = angle_rad * 180.0 / PI;
+    RULAResult result = computeRULA(skeleton, flags, 'R', false);
 
-    std::cout << "Angle = " << angle_rad << " radians (" << angle_deg << " degrees)\n";
+    auto end = std::chrono::steady_clock::now();
+
+    // Cast to whatever unit you need
+    double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
+    
+    result.print();
+
+    std::cout << "Elapsed time: " << elapsed_ms << "ms" << std::endl;
+
+    return result.grandScore;
 }
 
 
@@ -129,6 +136,7 @@ int main() {
         std::string msg = skelSub.get_skeleton_data();
         std::string label;
         if (msg != "") {
+            std::cout << msg << std::endl;
             auto skeleton = parseMergedString(msg, label);
 
             int result = rula_evaluation(skeleton);
@@ -138,3 +146,55 @@ int main() {
 
     return 0;
 }
+
+
+
+// // ---------------------------------------------------------------------------
+// // Example usage
+// // ---------------------------------------------------------------------------
+// int main()
+// {
+//     // Example skeleton: worker reaching forward with right arm,
+//     // slightly bent trunk, head looking down.
+//     // Coordinates in meters, Y-up.
+//     Skeleton kp = {
+//         /* 0  HEAD         */ { 0.00,  1.70,  0.05},
+//         /* 1  L_SHOULDER   */ {-0.18,  1.45,  0.00},
+//         /* 2  R_SHOULDER   */ { 0.18,  1.45,  0.00},
+//         /* 3  L_ELBOW      */ {-0.25,  1.20,  0.00},
+//         /* 4  R_ELBOW      */ { 0.25,  1.10,  0.20},
+//         /* 5  L_WRIST      */ {-0.28,  1.00,  0.00},
+//         /* 6  R_WRIST      */ { 0.30,  0.95,  0.40},
+//         /* 7  UPPER_TORSO  */ { 0.00,  1.35, -0.02},
+//         /* 8  LOWER_TORSO  */ { 0.00,  1.00, -0.05},
+//         /* 9  L_HIP        */ {-0.10,  0.90,  0.00},
+//         /* 10 R_HIP        */ { 0.10,  0.90,  0.00},
+//         /* 11 L_KNEE       */ {-0.10,  0.50,  0.00},
+//         /* 12 R_KNEE       */ { 0.10,  0.50,  0.00},
+//         /* 13 L_ANKLE      */ {-0.10,  0.05,  0.00},
+//         /* 14 R_ANKLE      */ { 0.10,  0.05,  0.00},
+//     };
+// 
+//     
+//     AdjustmentFlags flags;
+//     flags.isRepeated    = true;   // task is repetitive
+//     flags.forceScoreA   = 1;      // 2-10 kg load, intermittent
+//     flags.forceScoreB   = 1;
+// 
+//     
+// 
+//     auto start = std::chrono::steady_clock::now();
+// 
+//     RULAResult result = computeRULA(kp, flags, 'R', false);
+// 
+//     auto end = std::chrono::steady_clock::now();
+// 
+//     // Cast to whatever unit you need
+//     double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
+//     
+//     result.print();
+// 
+//     std::cout << "Elapsed time: " << elapsed_ms << "ms" << std::endl;
+// 
+//     return 0;
+// }

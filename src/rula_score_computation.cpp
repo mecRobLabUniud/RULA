@@ -14,12 +14,7 @@
  * system where Y is up (adjust verticalAxis if your system differs).
  */
 
-#include <array>
-#include <cmath>
-#include <iostream>
-#include <string>
-#include <algorithm>
-#include <vector>
+#include "rula_score_computation.h"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,37 +62,6 @@ static Vec3 toVec3(const std::array<double, 3>& p) {
     return {p[0], p[1], p[2]};
 }
 
-// ---------------------------------------------------------------------------
-// Optional adjustment flags (set per-observation if known)
-// ---------------------------------------------------------------------------
-struct AdjustmentFlags {
-    // Group A – Upper Arm
-    bool shoulderRaised    = false;   // +1
-    bool upperArmAbducted  = false;   // +1
-    bool armSupported      = false;   // -1
-
-    // Group A – Lower Arm
-    bool crossingMidlineOrOut = false; // +1
-
-    // Group A – Wrist
-    bool wristDeviated     = false;   // +1 (radial/ulnar)
-
-    // Group B – Neck
-    bool neckTwisted       = false;   // +1
-    bool neckSideBent      = false;   // +1
-
-    // Group B – Trunk
-    bool trunkTwisted      = false;   // +1
-    bool trunkSideBent     = false;   // +1
-
-    // Muscle use & force (applied identically to both groups A and B)
-    bool isStaticPosture   = false;   // held >1 min  → +1
-    bool isRepeated        = false;   // >4 times/min → +1
-
-    // Force/load score (0–3) for group A and B independently
-    int  forceScoreA       = 0;       // 0=<2kg intermittent … 3=shock/rapid
-    int  forceScoreB       = 0;
-};
 
 // ---------------------------------------------------------------------------
 // Vertical reference (world up). Change to {0,0,1} for Z-up systems.
@@ -337,48 +301,6 @@ static std::string actionLevel(int grandScore)
     else                      return "Level 4 – Immediate investigation and changes required!";
 }
 
-// ---------------------------------------------------------------------------
-// Main RULA assessment struct
-// ---------------------------------------------------------------------------
-struct RULAResult {
-    // Group A intermediates
-    int upperArmScore, lowerArmScore, wristScore, wristTwistScore;
-    int postureScoreA, muscleUseScoreA, forceScoreA, finalScoreA;
-
-    // Group B intermediates
-    int neckScore, trunkScore, legScore;
-    int postureScoreB, muscleUseScoreB, forceScoreB, finalScoreB;
-
-    // Grand score
-    int grandScore;
-    std::string action;
-
-    void print() const {
-        std::cout << "=== RULA Assessment ===\n\n";
-
-        std::cout << "-- Group A (Upper Limb) --\n";
-        std::cout << "  Upper Arm score : " << upperArmScore   << "\n";
-        std::cout << "  Lower Arm score : " << lowerArmScore   << "\n";
-        std::cout << "  Wrist score     : " << wristScore      << "\n";
-        std::cout << "  Wrist Twist     : " << wristTwistScore << "\n";
-        std::cout << "  Posture Score A : " << postureScoreA   << "\n";
-        std::cout << "  Muscle Use A    : +" << muscleUseScoreA << "\n";
-        std::cout << "  Force Score A   : +" << forceScoreA     << "\n";
-        std::cout << "  >>> Final Score A: " << finalScoreA     << "\n\n";
-
-        std::cout << "-- Group B (Neck/Trunk/Legs) --\n";
-        std::cout << "  Neck score      : " << neckScore       << "\n";
-        std::cout << "  Trunk score     : " << trunkScore      << "\n";
-        std::cout << "  Leg score       : " << legScore        << "\n";
-        std::cout << "  Posture Score B : " << postureScoreB   << "\n";
-        std::cout << "  Muscle Use B    : +" << muscleUseScoreB << "\n";
-        std::cout << "  Force Score B   : +" << forceScoreB     << "\n";
-        std::cout << "  >>> Final Score B: " << finalScoreB     << "\n\n";
-
-        std::cout << "=== Grand Score: " << grandScore << " ===\n";
-        std::cout << action << "\n";
-    }
-};
 
 // ---------------------------------------------------------------------------
 // Top-level function
@@ -392,8 +314,8 @@ struct RULAResult {
  */
 RULAResult computeRULA(const Skeleton& kp,
                         const AdjustmentFlags& f,
-                        char side = 'R',
-                        bool wristAtEndOfRange = false)
+                        char side,
+                        bool wristAtEndOfRange)
 {
     RULAResult r{};
 
@@ -443,39 +365,3 @@ RULAResult computeRULA(const Skeleton& kp,
     return r;
 }
 
-// ---------------------------------------------------------------------------
-// Example usage
-// ---------------------------------------------------------------------------
-int main()
-{
-    // Example skeleton: worker reaching forward with right arm,
-    // slightly bent trunk, head looking down.
-    // Coordinates in meters, Y-up.
-    Skeleton kp = {
-        /* 0  HEAD         */ { 0.00,  1.70,  0.05},
-        /* 1  L_SHOULDER   */ {-0.18,  1.45,  0.00},
-        /* 2  R_SHOULDER   */ { 0.18,  1.45,  0.00},
-        /* 3  L_ELBOW      */ {-0.25,  1.20,  0.00},
-        /* 4  R_ELBOW      */ { 0.25,  1.10,  0.20},
-        /* 5  L_WRIST      */ {-0.28,  1.00,  0.00},
-        /* 6  R_WRIST      */ { 0.30,  0.95,  0.40},
-        /* 7  UPPER_TORSO  */ { 0.00,  1.35, -0.02},
-        /* 8  LOWER_TORSO  */ { 0.00,  1.00, -0.05},
-        /* 9  L_HIP        */ {-0.10,  0.90,  0.00},
-        /* 10 R_HIP        */ { 0.10,  0.90,  0.00},
-        /* 11 L_KNEE       */ {-0.10,  0.50,  0.00},
-        /* 12 R_KNEE       */ { 0.10,  0.50,  0.00},
-        /* 13 L_ANKLE      */ {-0.10,  0.05,  0.00},
-        /* 14 R_ANKLE      */ { 0.10,  0.05,  0.00},
-    };
-
-    AdjustmentFlags flags;
-    flags.isRepeated    = true;   // task is repetitive
-    flags.forceScoreA   = 1;      // 2-10 kg load, intermittent
-    flags.forceScoreB   = 1;
-
-    RULAResult result = computeRULA(kp, flags, 'R', false);
-    result.print();
-
-    return 0;
-}

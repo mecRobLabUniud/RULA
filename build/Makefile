@@ -123,33 +123,6 @@ rula_evaluation/fast:
 	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/build
 .PHONY : rula_evaluation/fast
 
-src/angle_calculation.o: src/angle_calculation.cpp.o
-
-.PHONY : src/angle_calculation.o
-
-# target to build an object file
-src/angle_calculation.cpp.o:
-	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/angle_calculation.cpp.o
-.PHONY : src/angle_calculation.cpp.o
-
-src/angle_calculation.i: src/angle_calculation.cpp.i
-
-.PHONY : src/angle_calculation.i
-
-# target to preprocess a source file
-src/angle_calculation.cpp.i:
-	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/angle_calculation.cpp.i
-.PHONY : src/angle_calculation.cpp.i
-
-src/angle_calculation.s: src/angle_calculation.cpp.s
-
-.PHONY : src/angle_calculation.s
-
-# target to generate assembly for a file
-src/angle_calculation.cpp.s:
-	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/angle_calculation.cpp.s
-.PHONY : src/angle_calculation.cpp.s
-
 src/rula_evaluation.o: src/rula_evaluation.cpp.o
 
 .PHONY : src/rula_evaluation.o
@@ -177,6 +150,33 @@ src/rula_evaluation.cpp.s:
 	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/rula_evaluation.cpp.s
 .PHONY : src/rula_evaluation.cpp.s
 
+src/rula_score_computation.o: src/rula_score_computation.cpp.o
+
+.PHONY : src/rula_score_computation.o
+
+# target to build an object file
+src/rula_score_computation.cpp.o:
+	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/rula_score_computation.cpp.o
+.PHONY : src/rula_score_computation.cpp.o
+
+src/rula_score_computation.i: src/rula_score_computation.cpp.i
+
+.PHONY : src/rula_score_computation.i
+
+# target to preprocess a source file
+src/rula_score_computation.cpp.i:
+	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/rula_score_computation.cpp.i
+.PHONY : src/rula_score_computation.cpp.i
+
+src/rula_score_computation.s: src/rula_score_computation.cpp.s
+
+.PHONY : src/rula_score_computation.s
+
+# target to generate assembly for a file
+src/rula_score_computation.cpp.s:
+	$(MAKE) -f CMakeFiles/rula_evaluation.dir/build.make CMakeFiles/rula_evaluation.dir/src/rula_score_computation.cpp.s
+.PHONY : src/rula_score_computation.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -186,12 +186,12 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... rula_evaluation"
-	@echo "... src/angle_calculation.o"
-	@echo "... src/angle_calculation.i"
-	@echo "... src/angle_calculation.s"
 	@echo "... src/rula_evaluation.o"
 	@echo "... src/rula_evaluation.i"
 	@echo "... src/rula_evaluation.s"
+	@echo "... src/rula_score_computation.o"
+	@echo "... src/rula_score_computation.i"
+	@echo "... src/rula_score_computation.s"
 .PHONY : help
 
 

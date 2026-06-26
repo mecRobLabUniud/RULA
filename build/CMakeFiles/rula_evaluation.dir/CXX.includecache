@@ -6,7 +6,21 @@
 
 #IncludeRegexTransform: 
 
-../include/angle_calculation.h
+../include/rula_score_computation.h
+array
+-
+cmath
+-
+iostream
+-
+string
+-
+algorithm
+-
+vector
+-
+chrono
+-
 
 ../include/skeleton_receiver.h
 array
@@ -41,10 +55,10 @@ array
 -
 optional
 -
-angle_calculation.h
-/home/lab/Desktop/RULA/src/angle_calculation.h
 skeleton_receiver.h
 /home/lab/Desktop/RULA/src/skeleton_receiver.h
+rula_score_computation.h
+/home/lab/Desktop/RULA/src/rula_score_computation.h
 
 /usr/local/include/eigen3/Eigen/Cholesky
 Core
