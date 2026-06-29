@@ -1,1 +1,0 @@
-/usr/bin/c++     CMakeFiles/rula_elavuation.dir/src/angle_calculation.cpp.o  -o rula_elavuation  -lzmq -lpthread 

@@ -102,7 +102,7 @@ struct AdjustmentFlags {
 // ---------------------------------------------------------------------------
 // Vertical reference (world up). Change to {0,0,1} for Z-up systems.
 // ---------------------------------------------------------------------------
-static const Vec3 WORLD_UP = {0.0, 1.0, 0.0};
+static const Vec3 WORLD_UP = {0.0, 0.0, 1.0};
 
 // ---------------------------------------------------------------------------
 // Group A scoring
@@ -110,15 +110,17 @@ static const Vec3 WORLD_UP = {0.0, 1.0, 0.0};
 
 // Step 1 – Upper Arm  (returns raw score 1-4, then adjustments added outside)
 static int scoreUpperArm(const Vec3& shoulder, const Vec3& elbow,
-                          const Vec3& hip,
+                          const Vec3& upperTorso, const Vec3& lowerTorso,
                           const AdjustmentFlags& f)
 {
     // Vector from shoulder downward along trunk (reference for 0°)
-    Vec3 trunkDown = (hip - shoulder).normalized();
+    Vec3 trunkDown = (lowerTorso - upperTorso).normalized();
     Vec3 upperArm  = (elbow - shoulder).normalized();
 
     // Angle between upper arm and the trunk-down direction
     double ang = angleDeg(upperArm, trunkDown);
+
+    std::cout << "scoreUpperArm angle: " << ang << "°" << std::endl;
     // ang ≈ 0  → arm hanging straight down (neutral)
     // ang ≈ 90 → arm horizontal
     // ang ≈ 180→ arm fully raised overhead
@@ -148,6 +150,8 @@ static int scoreLowerArm(const Vec3& shoulder, const Vec3& elbow,
     Vec3 upper = (shoulder - elbow).normalized();
     Vec3 lower = (wrist    - elbow).normalized();
     double ang = angleDeg(upper, lower);
+
+    std::cout << "scoreLowerArm angle: " << ang << "°" << std::endl;
     // ang is the elbow flexion angle (0°=fully extended, 180°=fully flexed)
     // RULA uses flexion from 0°: score 1 for 60-100°, score 2 otherwise
     // Note: angleDeg gives supplementary angle relative to straight line.
@@ -172,6 +176,9 @@ static int scoreWrist(const Vec3& elbow, const Vec3& wrist,
     // Approximate wrist flexion: angle between forearm and world vertical
     Vec3 forearm = (wrist - elbow).normalized();
     double angFromVertical = angleDeg(forearm, WORLD_UP);
+
+    std::cout << "scoreWrist angle: " << angFromVertical << "°" << std::endl;
+
     // When forearm is horizontal (90° from up) and wrist is neutral,
     // deviation from 90° approximates flexion/extension.
     double approxFlexExt = std::abs(angFromVertical - 90.0);
@@ -229,6 +236,8 @@ static int scoreNeck(const Vec3& head, const Vec3& upperTorso,
 {
     Vec3 neck = (head - upperTorso).normalized();
     double ang = angleDeg(neck, WORLD_UP);
+
+    std::cout << "scoreNeck angle: " << ang << "°" << std::endl;
     // ang ≈ 0  → head straight up (neutral extension reference)
     // RULA flexion = angle forward from vertical
     int score;
@@ -249,6 +258,8 @@ static int scoreTrunk(const Vec3& upperTorso, const Vec3& lowerTorso,
 {
     Vec3 trunk = (upperTorso - lowerTorso).normalized();
     double ang = angleDeg(trunk, WORLD_UP);
+
+    std::cout << "scoreTrunk angle: " << ang << "°" << std::endl;
 
     int score;
     if      (ang <= 5)  score = 1;   // well-supported / upright
@@ -275,6 +286,8 @@ static int scoreLegs(const Vec3& lHip,  const Vec3& rHip,
 
     double lKneeAng = angleDeg(lThigh, lShank);
     double rKneeAng = angleDeg(rThigh, rShank);
+
+    std::cout << "scoreLegsangle: " << lKneeAng << "°" << " - " << rKneeAng << "°" << std::endl;
 
     // If knees are roughly straight (legs extended / well-supported standing
     // or balanced sitting), score 1; otherwise score 2.
@@ -393,8 +406,7 @@ struct RULAResult {
 RULAResult computeRULA(const Skeleton& kp,
                         const AdjustmentFlags& f,
                         char side = 'R',
-                        bool wristAtEndOfRange = false)
-{
+                        bool wristAtEndOfRange = false) {
     RULAResult r{};
 
     // Select left or right keypoints
@@ -412,7 +424,7 @@ RULAResult computeRULA(const Skeleton& kp,
     const Vec3 head        = toVec3(kp[HEAD]);
 
     // --- Group A ---
-    r.upperArmScore   = scoreUpperArm(shoulder, elbow, hip, f);
+    r.upperArmScore   = scoreUpperArm(shoulder, elbow, upperTorso, lowerTorso, f);
     r.lowerArmScore   = scoreLowerArm(shoulder, elbow, wrist, f);
     r.wristScore      = scoreWrist(elbow, wrist, shoulder, f);
     r.wristTwistScore = scoreWristTwist(wristAtEndOfRange);
@@ -451,31 +463,53 @@ int main()
     // Example skeleton: worker reaching forward with right arm,
     // slightly bent trunk, head looking down.
     // Coordinates in meters, Y-up.
+    // Skeleton kp = {
+    //     /* 0  HEAD         */ { 0.00,  1.70,  0.05},
+    //     /* 1  L_SHOULDER   */ {-0.18,  1.45,  0.00},
+    //     /* 2  R_SHOULDER   */ { 0.18,  1.45,  0.00},
+    //     /* 3  L_ELBOW      */ {-0.25,  1.20,  0.00},
+    //     /* 4  R_ELBOW      */ { 0.25,  1.10,  0.20},
+    //     /* 5  L_WRIST      */ {-0.28,  1.00,  0.00},
+    //     /* 6  R_WRIST      */ { 0.30,  0.95,  0.40},
+    //     /* 7  UPPER_TORSO  */ { 0.00,  1.35, -0.02},
+    //     /* 8  LOWER_TORSO  */ { 0.00,  1.00, -0.05},
+    //     /* 9  L_HIP        */ {-0.10,  0.90,  0.00},
+    //     /* 10 R_HIP        */ { 0.10,  0.90,  0.00},
+    //     /* 11 L_KNEE       */ {-0.10,  0.50,  0.00},
+    //     /* 12 R_KNEE       */ { 0.10,  0.50,  0.00},
+    //     /* 13 L_ANKLE      */ {-0.10,  0.05,  0.00},
+    //     /* 14 R_ANKLE      */ { 0.10,  0.05,  0.00},
+    // };
+
     Skeleton kp = {
-        /* 0  HEAD         */ { 0.00,  1.70,  0.05},
-        /* 1  L_SHOULDER   */ {-0.18,  1.45,  0.00},
-        /* 2  R_SHOULDER   */ { 0.18,  1.45,  0.00},
-        /* 3  L_ELBOW      */ {-0.25,  1.20,  0.00},
-        /* 4  R_ELBOW      */ { 0.25,  1.10,  0.20},
-        /* 5  L_WRIST      */ {-0.28,  1.00,  0.00},
-        /* 6  R_WRIST      */ { 0.30,  0.95,  0.40},
-        /* 7  UPPER_TORSO  */ { 0.00,  1.35, -0.02},
-        /* 8  LOWER_TORSO  */ { 0.00,  1.00, -0.05},
-        /* 9  L_HIP        */ {-0.10,  0.90,  0.00},
-        /* 10 R_HIP        */ { 0.10,  0.90,  0.00},
-        /* 11 L_KNEE       */ {-0.10,  0.50,  0.00},
-        /* 12 R_KNEE       */ { 0.10,  0.50,  0.00},
-        /* 13 L_ANKLE      */ {-0.10,  0.05,  0.00},
-        /* 14 R_ANKLE      */ { 0.10,  0.05,  0.00},
+        { 0.38561093,  0.58366576,  0.88077476},
+        { 0.25705159,  0.75563931,  0.69358229},
+        { 0.33072013,  0.43864895,  0.65664771},
+        { 0.21092594,  1.059997  ,  0.64530905},
+        { 0.33662338,  0.44507781,  0.38093787},
+        { 0.22832004,  1.31962699,  0.68518367},
+        { 0.36859576,  0.38922919,  0.10281177},
+        { 0.29388586,  0.59714413,  0.675115  },
+        { 0.3453726 ,  0.6424219 ,  0.14056365},
+        { 0.31562263,  0.73525941,  0.15264951},
+        { 0.37512257,  0.54958439,  0.1284778 },
+        { 0.27161685,  0.73644812, -0.27857493},
+        { 0.2757422 ,  0.50638936, -0.36591824},
+        { 0.27161685,  0.73644812, -0.6857493},
+        { 0.2757422 ,  0.50638936, -0.6591824},
     };
+
 
     AdjustmentFlags flags;
     flags.isRepeated    = true;   // task is repetitive
     flags.forceScoreA   = 1;      // 2-10 kg load, intermittent
     flags.forceScoreB   = 1;
 
-    RULAResult result = computeRULA(kp, flags, 'R', false);
-    result.print();
+    RULAResult resultR = computeRULA(kp, flags, 'R', false);
+    resultR.print();
+
+    RULAResult resultL = computeRULA(kp, flags, 'L', false);
+    resultL.print();
 
     return 0;
 }

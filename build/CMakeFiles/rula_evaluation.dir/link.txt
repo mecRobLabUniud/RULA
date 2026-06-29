@@ -1,1 +1,1 @@
-/usr/bin/c++     CMakeFiles/rula_evaluation.dir/src/rula_evaluation.cpp.o CMakeFiles/rula_evaluation.dir/src/rula_score_computation.cpp.o  -o rula_evaluation  -lzmq -lpthread 
+/usr/bin/c++     CMakeFiles/rula_evaluation.dir/src/rula_evaluation.cpp.o  -o rula_evaluation  -lzmq -lpthread 

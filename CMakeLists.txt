@@ -20,7 +20,7 @@ include_directories(${ZMQ_INCLUDE_DIRS}
 # Definisci l'eseguibile con i suoi file sorgente
 add_executable(rula_evaluation
     src/rula_evaluation.cpp 
-    src/rula_score_computation.cpp
+    # src/rula_score_computation.cpp
 )
 
 # Collega le librerie all'eseguibile
