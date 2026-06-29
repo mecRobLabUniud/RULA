@@ -173,22 +173,23 @@ static int scoreWrist(const Vec3& elbow, const Vec3& wrist,
                        const Vec3& shoulder,
                        const AdjustmentFlags& f)
 {
-    // Approximate wrist flexion: angle between forearm and world vertical
-    Vec3 forearm = (wrist - elbow).normalized();
-    double angFromVertical = angleDeg(forearm, WORLD_UP);
-
-    std::cout << "scoreWrist angle: " << angFromVertical << "°" << std::endl;
-
-    // When forearm is horizontal (90° from up) and wrist is neutral,
-    // deviation from 90° approximates flexion/extension.
-    double approxFlexExt = std::abs(angFromVertical - 90.0);
-
-    int score;
-    if      (approxFlexExt <= 5)  score = 1;   // near neutral
-    else if (approxFlexExt <= 15) score = 2;
-    else                          score = 3;
-
-    if (f.wristDeviated) ++score;
+    // // Approximate wrist flexion: angle between forearm and world vertical
+    // Vec3 forearm = (wrist - elbow).normalized();
+    // double angFromVertical = angleDeg(forearm, WORLD_UP);
+// 
+    // std::cout << "scoreWrist angle: " << angFromVertical << "°" << std::endl;
+// 
+    // // When forearm is horizontal (90° from up) and wrist is neutral,
+    // // deviation from 90° approximates flexion/extension.
+    // double approxFlexExt = std::abs(angFromVertical - 90.0);
+// 
+    // int score;
+    // if      (approxFlexExt <= 5)  score = 1;   // near neutral
+    // else if (approxFlexExt <= 15) score = 2;
+    // else                          score = 3;
+// 
+    // if (f.wristDeviated) ++score;
+    int score = 1;
 
     return score;
 }
@@ -501,9 +502,9 @@ int main()
 
 
     AdjustmentFlags flags;
-    flags.isRepeated    = true;   // task is repetitive
-    flags.forceScoreA   = 1;      // 2-10 kg load, intermittent
-    flags.forceScoreB   = 1;
+    flags.isRepeated    = false;   // task is repetitive
+    flags.forceScoreA   = 0;      // 2-10 kg load, intermittent
+    flags.forceScoreB   = 0;
 
     RULAResult resultR = computeRULA(kp, flags, 'R', false);
     resultR.print();
