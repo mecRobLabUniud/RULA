@@ -2,29 +2,57 @@
 
 #include <array>
 #include <cmath>
-#include <iostream>
 #include <string>
-#include <algorithm>
 #include <vector>
-#include <chrono>
 
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 // Types
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+struct Vec3 {
+    double x, y, z;
 
-struct Vec3;
+    Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
+    Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
+    Vec3 operator*(double s)      const { return {x*s,   y*s,   z*s};   }
 
-// Angle in degrees between two vectors
-static double angleDeg(const Vec3& a, const Vec3& b);
+    double dot(const Vec3& o)  const { return x*o.x + y*o.y + z*o.z; }
+    double norm()              const { return std::sqrt(dot(*this));   }
+    Vec3   normalized()        const { double n = norm(); return (n > 1e-9) ? (*this)*(1.0/n) : Vec3{0,0,0}; }
+    Vec3   cross(const Vec3& o) const {
+        return { y*o.z - z*o.y,
+                 z*o.x - x*o.z,
+                 x*o.y - y*o.x };
+    }
+};
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Conversions
+// ─────────────────────────────────────────────────────────────────────────────
+double angleDeg(const Vec3& a, const Vec3& b);
+
+// Keypoint indices
+enum KP {
+    HEAD=0, L_SHOULDER=1, R_SHOULDER=2,
+    L_ELBOW=3,  R_ELBOW=4,
+    L_WRIST=5,  R_WRIST=6,
+    UPPER_TORSO=7, LOWER_TORSO=8,
+    L_HIP=9,   R_HIP=10,
+    L_KNEE=11, R_KNEE=12,
+    L_ANKLE=13, R_ANKLE=14
+};
 
 using Skeleton = std::vector<std::array<double, 3>>;
 
 // Convert a raw keypoint array to Vec3
-static Vec3 toVec3(const std::array<double, 3>& p);
+Vec3 toVec3(const std::array<double, 3>& p);
 
-// ---------------------------------------------------------------------------
-// Optional adjustment flags (set per-observation if known)
-// ---------------------------------------------------------------------------
+extern const Vec3 WORLD_UP;
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Optional adjustement flags
+// ─────────────────────────────────────────────────────────────────────────────
 struct AdjustmentFlags {
     // Group A – Upper Arm
     bool shoulderRaised    = false;   // +1
@@ -54,68 +82,56 @@ struct AdjustmentFlags {
     int  forceScoreB       = 0;
 };
 
-// ---------------------------------------------------------------------------
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Group A scoring
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+int scoreUpperArm(const Vec3& shoulder, const Vec3& elbow,
+                   const Vec3& upperTorso, const Vec3& lowerTorso,
+                   const AdjustmentFlags& f);
 
-// Step 1 – Upper Arm  (returns raw score 1-4, then adjustments added outside)
-static int scoreUpperArm(const Vec3& shoulder, const Vec3& elbow,
-                          const Vec3& hip,
-                          const AdjustmentFlags& f);
+int scoreLowerArm(const Vec3& shoulder, const Vec3& elbow,
+                   const Vec3& wrist, const AdjustmentFlags& f);
 
-// Step 2 – Lower Arm
-static int scoreLowerArm(const Vec3& shoulder, const Vec3& elbow,
-                          const Vec3& wrist,
-                          const AdjustmentFlags& f);
+int scoreWrist(const Vec3& elbow, const Vec3& wrist,
+                const Vec3& shoulder, const AdjustmentFlags& f);
 
-// Step 3 – Wrist
-// We estimate flexion/extension from the wrist-elbow-shoulder plane.
-// For a more accurate result the hand direction should be used; here we
-// proxy it with the forearm vector projected against the trunk frontal plane.
-static int scoreWrist(const Vec3& elbow, const Vec3& wrist,
-                       const Vec3& shoulder,
-                       const AdjustmentFlags& f);
+int scoreWristTwist(bool atEndOfRange);
 
-// Step 4 – Wrist Twist
-// Without a hand keypoint this must be supplied externally.
-// Default: mid-range = 1, end of range = 2.
-static int scoreWristTwist(bool atEndOfRange);
+int lookupGroupA(int upperArm, int lowerArm, int wrist, int wristTwist);
 
 
-static int lookupGroupA(int upperArm, int lowerArm, int wrist, int wristTwist);
-
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 // Group B scoring
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+int scoreNeck(const Vec3& head, const Vec3& upperTorso,
+               const AdjustmentFlags& f);
 
-// Step 8 – Neck
-static int scoreNeck(const Vec3& head, const Vec3& upperTorso,
-                      const AdjustmentFlags& f);
+int scoreTrunk(const Vec3& upperTorso, const Vec3& lowerTorso,
+                const AdjustmentFlags& f);
 
-// Step 9 – Trunk
-static int scoreTrunk(const Vec3& upperTorso, const Vec3& lowerTorso,
-                       const AdjustmentFlags& f);
+int scoreLegs(const Vec3& lHip,  const Vec3& rHip,
+               const Vec3& lKnee, const Vec3& rKnee,
+               const Vec3& lAnkle,const Vec3& rAnkle);
 
-// Step 10 – Legs
-// Heuristic: compare hip–knee and knee–ankle vectors; large deviation = unstable
-static int scoreLegs(const Vec3& lHip,  const Vec3& rHip,
-                      const Vec3& lKnee, const Vec3& rKnee,
-                      const Vec3& lAnkle,const Vec3& rAnkle);
+int lookupGroupB(int neck, int trunk, int legs);
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Grand score
+// ─────────────────────────────────────────────────────────────────────────────
+int lookupGrandScore(int scoreA, int scoreB);
 
-static int lookupGroupB(int neck, int trunk, int legs);
 
-
-static int lookupGrandScore(int scoreA, int scoreB);
-// ---------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
 // Action level interpretation
-// ---------------------------------------------------------------------------
-static std::string actionLevel(int grandScore);
+// ─────────────────────────────────────────────────────────────────────────────
+std::string actionLevel(int grandScore);
 
-// ---------------------------------------------------------------------------
-// Main RULA assessment struct
-// ---------------------------------------------------------------------------
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main structure
+// ─────────────────────────────────────────────────────────────────────────────
 struct RULAResult {
     // Group A intermediates
     int upperArmScore, lowerArmScore, wristScore, wristTwistScore;
@@ -129,37 +145,13 @@ struct RULAResult {
     int grandScore;
     std::string action;
 
-    void print() const {
-        std::cout << "=== RULA Assessment ===\n\n";
-
-        std::cout << "-- Group A (Upper Limb) --\n";
-        std::cout << "  Upper Arm score : " << upperArmScore   << "\n";
-        std::cout << "  Lower Arm score : " << lowerArmScore   << "\n";
-        std::cout << "  Wrist score     : " << wristScore      << "\n";
-        std::cout << "  Wrist Twist     : " << wristTwistScore << "\n";
-        std::cout << "  Posture Score A : " << postureScoreA   << "\n";
-        std::cout << "  Muscle Use A    : +" << muscleUseScoreA << "\n";
-        std::cout << "  Force Score A   : +" << forceScoreA     << "\n";
-        std::cout << "  >>> Final Score A: " << finalScoreA     << "\n\n";
-
-        std::cout << "-- Group B (Neck/Trunk/Legs) --\n";
-        std::cout << "  Neck score      : " << neckScore       << "\n";
-        std::cout << "  Trunk score     : " << trunkScore      << "\n";
-        std::cout << "  Leg score       : " << legScore        << "\n";
-        std::cout << "  Posture Score B : " << postureScoreB   << "\n";
-        std::cout << "  Muscle Use B    : +" << muscleUseScoreB << "\n";
-        std::cout << "  Force Score B   : +" << forceScoreB     << "\n";
-        std::cout << "  >>> Final Score B: " << finalScoreB     << "\n\n";
-
-        std::cout << "=== Grand Score: " << grandScore << " ===\n";
-        std::cout << action << "\n";
-    }
+    void print() const;
 };
 
-// ---------------------------------------------------------------------------
-// Top-level function
-// ---------------------------------------------------------------------------
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Top-level function
+// ─────────────────────────────────────────────────────────────────────────────
 /**
  * @param kp       15-element array of 3D keypoints (see enum KP for indices)
  * @param f        Adjustment flags (posture details not inferrable from kp)
