@@ -6,5 +6,5 @@ CXX_FLAGS =   -std=gnu++17
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/usr/include/pgm-5.2 -I/home/lab/Desktop/RULA/include -isystem /usr/local/include/eigen3 
+CXX_INCLUDES = -I/usr/include/pgm-5.2 -I/home/lab/Desktop/RULA/include -isystem /usr/local/include/eigen3 -isystem /usr/include/opencv4 
 

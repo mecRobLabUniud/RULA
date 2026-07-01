@@ -14,6 +14,7 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "/usr/include/pgm-5.2"
   "../include"
   "/usr/local/include/eigen3"
+  "/usr/include/opencv4"
   )
 
 # Targets to which this target links.
