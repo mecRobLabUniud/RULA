@@ -145,9 +145,9 @@ int scoreNeck(const Vec3& head, const Vec3& upperTorso,
                const AdjustmentFlags& f)
 {
     Vec3 neck = (head - upperTorso).normalized();
-    double ang = angleDeg(neck, WORLD_UP);
+    double ang = angleDeg(neck, WORLD_UP) - 10.0;   // subtract 10° for neutral reference
 
-    // std::cout << "scoreNeck angle: " << ang << "°" << std::endl;
+    std::cout << "scoreNeck angle: " << ang << "°" << std::endl;
     // ang ≈ 0  → head straight up (neutral extension reference)
     // RULA flexion = angle forward from vertical
     int score;

@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "skeleton_receiver.h"
+// #include "skeleton_receiver.h"
 #include "rula_score_computation.h"
 #include "data_transmitter.hpp"
 
@@ -98,8 +98,6 @@ std::vector<std::array<double, 3>> parseMergedString(const std::string& input, s
 // Entry point
 // ─────────────────────────────────────────────────────────────────────────────
 int main() {
-    SkeletonZmqSubscriber skelSub(10, "MERGED", 7000);
-
     AdjustmentFlags flags;
     flags.isRepeated    = false;
     flags.forceScoreA   = 0;
@@ -110,30 +108,22 @@ int main() {
     DataTransmitter dtr = DataTransmitter(DataTransmitter::Mode::Receiver, 10, "MERGED", 7000);
     DataTransmitter dts = DataTransmitter(DataTransmitter::Mode::Sender, 11, "RULA", 7000);
     // DataTransmitter dtr_rula = DataTransmitter(DataTransmitter::Mode::Receiver, 11, "RULA", 7000);
-
-    skelSub.start();
     while (true) {
-        // std::string msg = skelSub.get_skeleton_data();
-        // std::string msg = dtr.receive_packed_skeleton_data();
-        // std::cout << "msg: " << msg << "  -  ";
-
-        std::string label;
-        // std::cout << "msg: " << msg << std::endl;
         if (true) {
             auto start = std::chrono::steady_clock::now();
 
-            auto skeleton = dtr.receive_skeleton_data().first; // parseMergedString(msg, label);
+            auto skeleton = dtr.receive_skeleton_data().first;
             RULAResult result_R = computeRULA(skeleton, flags, 'R', false);
             RULAResult result_L = computeRULA(skeleton, flags, 'L', false);
 
-            // result.print();
+            result_R.print();
 
             auto end = std::chrono::steady_clock::now();
             // Cast to whatever unit you need
             double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
-            std::cout << "Score R: " << result_R.grandScore << "  -  ";
-            std::cout << "Score L: " << result_L.grandScore << "  -  ";
-            std::cout << "Elapsed time: " << elapsed_ms << "ms" << "  -  ";
+            // std::cout << "Score R: " << result_R.grandScore << "  -  ";
+            // std::cout << "Score L: " << result_L.grandScore << "  -  ";
+            // std::cout << "Elapsed time: " << elapsed_ms << "ms" << "\r";
 
             std::array<int, 2> rula_score = {result_R.grandScore, result_L.grandScore};
             dts.send_rula_score(rula_score);
@@ -145,7 +135,6 @@ int main() {
         auto t1 = std::chrono::steady_clock::now();
         double elapsed_tot = std::chrono::duration<double, std::milli>(t1 - t0).count();
     }
-    skelSub.stop();
 
     return 0;
 }
@@ -154,27 +143,6 @@ int main() {
 
 // int main()
 // {
-//     // Example skeleton: worker reaching forward with right arm,
-//     // slightly bent trunk, head looking down.
-//     // Coordinates in meters, Y-up.
-//     // Skeleton kp = {
-//     //     /* 0  HEAD         */ { 0.00,  1.70,  0.05},
-//     //     /* 1  L_SHOULDER   */ {-0.18,  1.45,  0.00},
-//     //     /* 2  R_SHOULDER   */ { 0.18,  1.45,  0.00},
-//     //     /* 3  L_ELBOW      */ {-0.25,  1.20,  0.00},
-//     //     /* 4  R_ELBOW      */ { 0.25,  1.10,  0.20},
-//     //     /* 5  L_WRIST      */ {-0.28,  1.00,  0.00},
-//     //     /* 6  R_WRIST      */ { 0.30,  0.95,  0.40},
-//     //     /* 7  UPPER_TORSO  */ { 0.00,  1.35, -0.02},
-//     //     /* 8  LOWER_TORSO  */ { 0.00,  1.00, -0.05},
-//     //     /* 9  L_HIP        */ {-0.10,  0.90,  0.00},
-//     //     /* 10 R_HIP        */ { 0.10,  0.90,  0.00},
-//     //     /* 11 L_KNEE       */ {-0.10,  0.50,  0.00},
-//     //     /* 12 R_KNEE       */ { 0.10,  0.50,  0.00},
-//     //     /* 13 L_ANKLE      */ {-0.10,  0.05,  0.00},
-//     //     /* 14 R_ANKLE      */ { 0.10,  0.05,  0.00},
-//     // };
-// 
 //     Skeleton kp = {
 //         { 0.32561093,  0.58366576,  0.88077476},
 //         { 0.25705159,  0.75563931,  0.69358229},
