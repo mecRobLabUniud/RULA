@@ -14,6 +14,9 @@ struct Vec3 {
     Vec3 operator-(const Vec3& o) const { return {x-o.x, y-o.y, z-o.z}; }
     Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
     Vec3 operator*(double s)      const { return {x*s,   y*s,   z*s};   }
+    // double x()                    const { return x; }
+    // double y()                    const { return y; }
+    // double z()                    const { return z; }
 
     double dot(const Vec3& o)  const { return x*o.x + y*o.y + z*o.z; }
     double norm()              const { return std::sqrt(dot(*this));   }

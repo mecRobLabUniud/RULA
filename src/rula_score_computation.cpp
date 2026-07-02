@@ -6,8 +6,22 @@
 
 #include <algorithm>
 #include <iostream>
+#include <cmath>
+#include <chrono>
 
 #include "rula_score_computation.h"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Parameters
+// ─────────────────────────────────────────────────────────────────────────────
+double elapsed = 0.0;
+int prevUpperArmScore = 0;
+int prevNeckScore = 0;
+int prevTrunkScore = 0;
+int prevLegScore = 0;
+auto startA = std::chrono::steady_clock::now();
+auto startB = std::chrono::steady_clock::now();
+bool started = false;
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -142,19 +156,20 @@ int lookupGroupA(int upperArm, int lowerArm, int wrist, int wristTwist)
 // Group B scoring
 // ─────────────────────────────────────────────────────────────────────────────
 int scoreNeck(const Vec3& head, const Vec3& upperTorso,
-               const AdjustmentFlags& f)
+               const Vec3& lowerTorso, const AdjustmentFlags& f)
 {
     Vec3 neck = (head - upperTorso).normalized();
-    double ang = angleDeg(neck, WORLD_UP) - 10.0;   // subtract 10° for neutral reference
+    Vec3 trunk = (upperTorso - lowerTorso).normalized();
+    double ang = angleDeg(neck, trunk) - 10.0;
 
-    std::cout << "scoreNeck angle: " << ang << "°" << std::endl;
+    // std::cout << "scoreNeck angle: " << ang << "°" << std::endl;
     // ang ≈ 0  → head straight up (neutral extension reference)
     // RULA flexion = angle forward from vertical
     int score;
     if      (ang <= 10) score = 1;
     else if (ang <= 20) score = 2;
     else if (ang <= 90) score = 3;
-    else                score = 4;   // extension
+    else                score = 4;
 
     if (f.neckTwisted)   ++score;
     if (f.neckSideBent)  ++score;
@@ -166,7 +181,7 @@ int scoreTrunk(const Vec3& upperTorso, const Vec3& lowerTorso,
                 const AdjustmentFlags& f)
 {
     Vec3 trunk = (upperTorso - lowerTorso).normalized();
-    double ang = angleDeg(trunk, WORLD_UP);
+    double ang = angleDeg(trunk, WORLD_UP) - 5.0;
 
     // std::cout << "scoreTrunk angle: " << ang << "°" << std::endl;
 
@@ -194,13 +209,26 @@ int scoreLegs(const Vec3& lHip,  const Vec3& rHip,
     double lKneeAng = angleDeg(lThigh, lShank);
     double rKneeAng = angleDeg(rThigh, rShank);
 
+    // std::cout << "lThigh: " << lKnee.x << "° - " << std::isnan(lKnee.x) << std::endl;
+
     // std::cout << "scoreLegsangle: " << lKneeAng << "°" << " - " << rKneeAng << "°" << std::endl;
 
     // If knees are roughly straight (legs extended / well-supported standing
     // or balanced sitting), score 1; otherwise score 2.
-    bool balanced = (lKneeAng < 30 || lKneeAng > 150) &&
-                    (rKneeAng < 30 || rKneeAng > 150);
-    return balanced ? 1 : 2;
+    // bool balanced = (lKneeAng < 30 || lKneeAng > 150) &&
+    //                 (rKneeAng < 30 || rKneeAng > 150);
+    // return balanced ? 1 : 2;
+
+    int score = 1;
+    if (!std::isnan(lKnee.x) && !std::isnan(lAnkle.x)) {
+        bool balanced = (lKneeAng < 30 || lKneeAng > 150);
+        score = balanced ? 1 : 2;
+    }
+    if (!std::isnan(rKnee.x) && !std::isnan(rAnkle.x)) {
+        bool balanced = (rKneeAng < 30 || rKneeAng > 150);
+        score = std::max(score, balanced ? 1 : 2);
+    }
+    return score;
 }
 
 static const int GROUP_B_TABLE[4][5][2] = {
@@ -287,6 +315,72 @@ void RULAResult::print() const {
 }
 
 
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Static posture calculation for Group A
+// ─────────────────────────────────────────────────────────────────────────────
+double elapsed = 0.0;
+int prevUpperArmScore = 0;
+auto startA = std::chrono::steady_clock::now();
+
+int checkStaticGroupA(int upperArmScore) {
+    if (upperArmScore > 2) {
+        if (prevUpperArmScore <= 2) {
+            startA = std::chrono::steady_clock::now();
+        }
+        auto end = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(end - startA).count();
+
+        if (elapsed > 5.0) return 1;
+    }
+    prevUpperArmScore = upperArmScore;
+    return 0;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Static posture calculation for Group B
+// ─────────────────────────────────────────────────────────────────────────────
+int checkStaticGroupB(int neckScore, int trunkScore, int legScore) {
+    if (neckScore > 2) {
+        if (prevNeckScore <= 2 && !started) {
+            startB = std::chrono::steady_clock::now();
+            started = true;
+        }
+        auto end = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(end - startB).count();
+
+        if (elapsed > 5.0) return 1; else return 0;
+    }
+    else if (trunkScore > 2) {
+        if (prevTrunkScore <= 2 && !started) {
+            startB = std::chrono::steady_clock::now();
+            started = true;
+        }
+        auto end = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(end - startB).count();
+
+        if (elapsed > 5.0) return 1; else return 0;
+    }
+    else if (legScore > 1) {
+        if (prevLegScore == 1 && !started) {
+            startB = std::chrono::steady_clock::now();
+            started = true;
+        }
+        auto end = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(end - startB).count();
+
+        if (elapsed > 5.0) return 1; else return 0;
+    }
+    prevNeckScore = neckScore;
+    prevTrunkScore = trunkScore;
+    prevLegScore = legScore;
+    started = false;
+    return 0;
+}
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Top-level function
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,21 +411,21 @@ RULAResult computeRULA(const Skeleton& kp,
     r.wristTwistScore = scoreWristTwist(wristAtEndOfRange);
 
     r.postureScoreA   = lookupGroupA(r.upperArmScore, r.lowerArmScore,
-                                     r.wristScore,    r.wristTwistScore);
+                                     r.wristScore,    r.wristTwistScore);   
 
-    r.muscleUseScoreA = (f.isStaticPosture ? 1 : 0) + (f.isRepeated ? 1 : 0);
+    r.muscleUseScoreA = checkStaticGroupA(r.upperArmScore) + (f.isRepeated ? 1 : 0);
     r.forceScoreA     = f.forceScoreA;
     r.finalScoreA     = r.postureScoreA + r.muscleUseScoreA + r.forceScoreA;
 
     // --- Group B ---
-    r.neckScore  = scoreNeck(head, upperTorso, f);
+    r.neckScore  = scoreNeck(head, upperTorso, lowerTorso, f);
     r.trunkScore = scoreTrunk(upperTorso, lowerTorso, f);
     r.legScore   = scoreLegs(toVec3(kp[L_HIP]), toVec3(kp[R_HIP]),
                               toVec3(kp[L_KNEE]), toVec3(kp[R_KNEE]),
                               toVec3(kp[L_ANKLE]), toVec3(kp[R_ANKLE]));
 
     r.postureScoreB   = lookupGroupB(r.neckScore, r.trunkScore, r.legScore);
-    r.muscleUseScoreB = (f.isStaticPosture ? 1 : 0) + (f.isRepeated ? 1 : 0);
+    r.muscleUseScoreB = checkStaticGroupB(r.neckScore, r.trunkScore, r.legScore) + (f.isRepeated ? 1 : 0);
     r.forceScoreB     = f.forceScoreB;
     r.finalScoreB     = r.postureScoreB + r.muscleUseScoreB + r.forceScoreB;
 

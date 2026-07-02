@@ -116,7 +116,7 @@ int main() {
             RULAResult result_R = computeRULA(skeleton, flags, 'R', false);
             RULAResult result_L = computeRULA(skeleton, flags, 'L', false);
 
-            result_R.print();
+            // result_R.print();
 
             auto end = std::chrono::steady_clock::now();
             // Cast to whatever unit you need
